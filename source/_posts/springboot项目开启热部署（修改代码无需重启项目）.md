@@ -1,0 +1,69 @@
+---
+title: springboot项目开启热部署（修改代码无需重启项目）
+date: 2019-12-15 22:39:31
+tags:
+    - Java
+    - SpringBoot
+    - 热部署
+categories:
+        - 后端
+---
+#### 本文旨在教你如何在springboot项目中开启热部署， 从而方便自己调试代码!
+
+前言：该博客主要是记录自己成长的点滴，当然也希望能够帮助到读者，本人小白一枚，难免会出错，如果文中有任何错误的地方，请务必留言指出，感激不尽，大佬们不喜勿喷，谢谢~~~
+<!-- more -->
+#### 据博主目前所知，有两种方式可以开启springboot的热部署。
+
+### 第一种，使用springboot提供的devtools。
+
+springboot提供了一个名为spring-boot-devtools的模块来使应用支持热部署，提高开发者的开发效率，无需手动重启springboot应用，需要添加以下的配置：
+
+#### 第一步，打开项目根目录下面的pom.xml文件，然后添加以下配置，如下图
+
+```
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-devtools</artifactId>
+      <optional>true</optional>
+  </dependency>
+
+  <plugin>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-maven-plugin</artifactId>
+      <configuration>
+          <fork>true</fork>
+      </configuration>
+  </plugin>
+```
+![1.jpg](https://upload-images.jianshu.io/upload_images/16847375-0672db41f50acdff.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 第二步，打开项目resources目录下面的application.yml文件，然后添加以下配置，重新启动项目即可开启热部署，如下图
+
+```
+debug: true
+spring:
+  devtools:
+    restart:
+      enabled: true  #设置开启热部署
+  freemarker:
+    cache: false    #页面不加载缓存，修改即时生效
+```
+![2.jpg](https://upload-images.jianshu.io/upload_images/16847375-f709a12da2e28519.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 第二种，使用开发工具IDEA中使用JRebel插件。
+
+#### 第一步，选择file -> settings -> plugins，搜索JRebel插件进行安装，如下图
+![3.jpg](https://upload-images.jianshu.io/upload_images/16847375-ede0fc640a7d2dfb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![4.jpg](https://upload-images.jianshu.io/upload_images/16847375-aab2d5f9cdac3f53.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 第二步，安装之后重启IDEA，打开JRebel激活页面，输入如下图，然后点击右下角的激活按钮即可
+![6.jpg](https://upload-images.jianshu.io/upload_images/16847375-fd8adb6d42b4fc01.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+###### 最新激活地址：http://jrebel.pyjuan.com/c95f8c2b-9e97-4bd4-b9bf-48ba24fc3a10
+
+
+#### 第三步，然后使用JRebel提供的方式运行项目即可开启热部署，如下图
+![5.jpg](https://upload-images.jianshu.io/upload_images/16847375-5a64981f055da2b2.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+后记：本次的“springboot项目开启热部署（修改代码无需重启项目）”教程到此结束，有任何意见或建议请留言，谢谢~~~

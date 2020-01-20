@@ -1,0 +1,163 @@
+---
+title: springboot项目整合swagger2，并实现扫描多个不同包的接口
+date: 2019-9-13 22:39:31
+tags:
+    - Java
+    - SpringBoot
+    - Swagger2
+categories:
+        - 后端
+---
+#### 本文旨在教你如何在springboot项目整合swagger2，并实现扫描多个不同包的接口
+
+前言：该博客主要是记录自己成长的点滴，当然也希望能够帮助到读者，本人小白一枚，难免会出错，如果文中有任何错误的地方，请务必留言指出，感激不尽，大佬们不喜勿喷，谢谢~~~
+<!-- more -->
+#### 由于本人开发的项目是RESTful风格的接口，故而引入swagger2，用于生成、描述、调用和可视化RESTful风格的web服务的接口文档，方便调试本地接口使用。
+
+#### 第一步，在pom.xml加入依赖，如下
+
+```
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger2</artifactId>
+    <version>2.7.0</version>
+</dependency>
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger-ui</artifactId>
+    <version>2.7.0</version>
+</dependency>
+```
+
+#### 第二步，创建swagger配置文件，如下
+
+```
+package com.jinhaoxun.acweb.config;
+
+import com.google.common.base.Function;
+import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import springfox.documentation.RequestHandler;
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+@Configuration
+@EnableSwagger2
+public class Swagger2Configration {
+
+    // 定义分隔符
+    private static final String splitor = ";";
+
+    @Bean
+    public Docket createRestApi() {
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apiInfo())
+                .select()
+                //此处添加需要扫描接口的包路径
+                .apis(basePackage("com.jinhaoxun.acweb.controller.applyController" + splitor + "com.jinhaoxun.acweb.controller.shiroController" + splitor + "com.jinhaoxun.acweb.test"))
+                .paths(PathSelectors.any())
+                .build();
+    }
+
+    private ApiInfo apiInfo() {
+        return new ApiInfoBuilder()
+                .title("Spring Boot添加 Swagger2 组件")
+                .description("Spring Boot添加 Swagger2 组件")
+                .version("1.0")
+                .build();
+    }
+
+    /**
+     * 重写basePackage方法，使能够实现多包访问
+     * @author  jinhaoxun
+     * @date 2019/1/26
+     * @param
+     */
+    public static Predicate<RequestHandler> basePackage(final String basePackage) {
+        return input -> declaringClass(input).transform(handlerPackage(basePackage)).or(true);
+    }
+
+    private static Function<Class<?>, Boolean> handlerPackage(final String basePackage)     {
+        return input -> {
+            // 循环判断匹配
+            for (String strPackage : basePackage.split(splitor)) {
+                boolean isMatch = input.getPackage().getName().startsWith(strPackage);
+                if (isMatch) {
+                    return true;
+                }
+            }
+            return false;
+        };
+    }
+
+    private static Optional<? extends Class<?>> declaringClass(RequestHandler input) {
+        return Optional.fromNullable(input.declaringClass());
+    }
+
+}
+
+```
+###### 解释：
+@Configuration  标识这是一个配置类
+@EnableSwagger2  开启swagger2
+
+#### 第三步，实际使用，在接口上添加对应注解，本人只添加基本的注解，如下图
+![1.jpg](https://upload-images.jianshu.io/upload_images/16847375-88bdb5b8e2d14396.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+#### 第四步，运行项目之后，在浏览器输入：[http://localhost:8088/swagger-ui.html](http://localhost:8080/swagger-ui.html)，端口号根据自己的项目端口号进行修改，使用结果如下图
+![2.jpg](https://upload-images.jianshu.io/upload_images/16847375-4829a71a41dd77ef.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![3.jpg](https://upload-images.jianshu.io/upload_images/16847375-068ee30764d0ae94.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+
+#### 另外，此处提供一些常用注解。如下
+
+```
+@Api() 用于类；表示标识这个类是swagger的资源 
+tags–表示说明 
+value–也是说明，可以使用tags替代 
+
+@ApiOperation() 用于方法；表示一个http请求的操作 
+value用于方法描述 
+notes用于提示内容 
+
+
+@ApiParam() 用于方法，参数，字段说明；表示对参数的添加元数据（说明或是否必填等） 
+name–参数名 
+value–参数说明 
+required–是否必填
+
+@ApiModel()用于类 ；表示对类进行说明，用于参数用实体类接收 
+value–表示对象名 
+
+@ApiModelProperty()用于方法，字段； 表示对model属性的说明或者数据操作更改 
+value–字段说明 
+name–重写属性名字 
+dataType–重写属性类型 
+required–是否必填 
+example–举例说明 
+hidden–隐藏
+
+@ApiImplicitParam() 用于方法 
+表示单独的请求参数
+
+@ApiImplicitParams() 用于方法，包含多个 @ApiImplicitParam 
+name–参数ming 
+value–参数说明 
+dataType–数据类型 
+paramType–参数类型 
+example–举例说明
+
+@ApiIgnore
+作用于方法上，使用这个注解swagger将忽略这个接口
+```
+
+后记：本次的“springboot项目整合swagger2，并实现扫描多个不同包的接口”教程到此结束，有任何意见或建议请留言，谢谢~~~

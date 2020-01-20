@@ -1,0 +1,90 @@
+---
+title: 自定义枚举工具类，根据枚举类code获取msg
+date: 2019-10-23 22:39:31
+tags:
+    - Java
+    - 自定义枚举类工具
+categories:
+        - 后端
+---
+#### 本文旨在教你如何自定义枚举工具类，根据枚举类code获取msg!
+
+前言：该博客主要是记录自己成长的点滴，当然也希望能够帮助到读者，本人小白一枚，难免会出错，如果文中有任何错误的地方，请务必留言指出，感激不尽，大佬们不喜勿喷，谢谢~~~
+<!-- more -->
+#### 本人开发过程中遇到的问题，类似map获取数据的方式，根据枚举类code获取msg。
+
+#### 第一步，定义CodeEnum接口，需要枚举类实现该接口，如下
+
+```
+package com.jinhaoxun.accommon.response;
+
+public interface CodeEnum {
+
+    Integer getCode();
+
+    String getMsg();
+}
+```
+
+#### 第二步，创建自定义枚举类CustomEnum，实现CodeEnum接口，如下
+
+```
+package com.jinhaoxun.accommon.response;
+
+public enum CustomEnum implements CodeEnum {
+    
+    SUCCESS(1,"请求成功"),
+    
+    FAIL(0,"请求失败")
+    ;
+
+    private Integer code;
+    private String msg;
+
+    CustomEnum(Integer code, String msg) {
+        this.code = code;
+        this.msg = msg;
+    }
+
+    @Override
+    public Integer getCode() {
+        return code;
+    }
+
+    @Override
+    public String getMsg() {
+        return msg;
+    }
+}
+```
+
+#### 第三步，创建枚举工具类EnumUtil，如下
+
+```
+package com.jinhaoxun.accommon.response;
+
+public class EnumUtil {
+    public static <T extends CodeEnum> String getByCode(Integer code, Class<T> t){
+        for(T item: t.getEnumConstants()){
+            if(item.getCode() == code){
+                return item.getMsg();
+            }
+        }
+        return "";
+    }
+}
+```
+
+#### 第四步，具体代码调用方式如下，结果如下图
+
+```
+@Test
+public void testEnumUtil() {
+    log.info("测试中!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    String msg = EnumUtil.getByCode(CustomEnum.SUCCESS.getCode(), CustomEnum.class);
+}
+```
+
+![1.jpg](https://upload-images.jianshu.io/upload_images/16847375-cd1321e794d94c2d.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+后记：本次的“自定义枚举工具类，根据枚举类code获取msg”教程到此结束，有任何意见或建议请留言，谢谢~~~

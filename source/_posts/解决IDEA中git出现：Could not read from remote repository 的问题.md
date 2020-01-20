@@ -1,0 +1,20 @@
+---
+title: 解决IDEA中git出现：Could not read from remote repository 的问题
+date: 2019-10-13 22:39:31
+tags:
+    - Idea
+    - Git
+categories:
+        - 工具
+---
+#### 本文旨在教你如何解决IDEA中git出现：Could not read from remote repository 的问题
+
+前言：该博客主要是记录自己成长的点滴，当然也希望能够帮助到读者，本人小白一枚，难免会出错，如果文中有任何错误的地方，请务必留言指出，感激不尽，大佬们不喜勿喷，谢谢~~~
+<!-- more -->
+#### 最近用IDEA上的git功能出现了可以commit但无法push和pull的问题，几番尝试后发现原因是Could not read from remote repository，终于在网上找到了解决的方法，在此分享出来。
+
+#### 第一步，在Settings——>Version Control——>Git中，将SSH executable设置为Native即可，如图，红色方框中是要修改的地方。
+![1.png](https://upload-images.jianshu.io/upload_images/16847375-22603c46787a9d3a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+后记：本次的“解决IDEA中git出现：Could not read from remote repository 的问题”教程到此结束，有任何意见或建议请留言，谢谢~~~

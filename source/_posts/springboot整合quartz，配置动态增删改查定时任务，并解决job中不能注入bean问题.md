@@ -1,0 +1,621 @@
+---
+title: springboot整合quartz，配置动态增删改查定时任务，并解决job中不能注入bean问题
+date: 2020-01-18 22:39:31
+tags:
+    - SpringBoot
+    - Java
+    - Quartz
+    - 私密
+categories:
+        - 后端
+---
+#### 本文旨在教你如何在springboot整合quartz，配置动态增删改查定时任务，并解决job中不能注入bean问题
+
+前言：该博客主要是记录自己成长的点滴，当然也希望能够帮助到读者，本人小白一枚，难免会出错，如果文中有任何错误的地方，请务必留言指出，感激不尽，大佬们不喜勿喷，谢谢~~~
+
+#### 前段时间由于工作上的需求，初步了解并使用了quartz定时任务框架，还不清楚quartz是什么东西的小伙伴，最好先百度了解一下。
+<!-- more -->
+#### 第一步，在pom.xml文件中加入依赖，如下
+```
+        <!-- Quartz -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+        </dependency>
+```
+#### 第二步，自定义JobFactory类，如下
+##### 注意：我注入了一个 自定义的JobFactory ，然后把它设置为SchedulerFactoryBean的JobFactory。让其在具体job类实例化时使用spring的api来进行依赖注入，目的是因为我在具体的job中需要注入一些spring的bean。
+```
+package com.jinhaoxun.acservice.quartz;
+
+import org.quartz.spi.TriggerFiredBundle;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.scheduling.quartz.AdaptableJobFactory;
+import org.springframework.stereotype.Component;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description Quartz创建JobFactory实例
+ */
+@Component
+public class JobFactory extends AdaptableJobFactory {
+
+    /**
+     * AutowireCapableBeanFactory接口是BeanFactory的子类
+     * 可以连接和填充那些生命周期不被Spring管理的已存在的bean实例
+     */
+    private AutowireCapableBeanFactory factory;
+
+    /**
+     * @author jinhaoxun
+     * @description 构造器
+     * @param factory
+     */
+    public JobFactory(AutowireCapableBeanFactory factory) {
+        this.factory = factory;
+    }
+
+    /**
+     * @author  jinhaoxun
+     * @description 创建Job实例
+     * @param bundle
+     * @return Object
+     */
+    @Override
+    protected Object createJobInstance(TriggerFiredBundle bundle) throws Exception {
+        Object job = super.createJobInstance(bundle);// 实例化对象
+        factory.autowireBean(job);// 进行注入（Spring管理该Bean）
+        return job;//返回对象
+    }
+}
+```
+#### 第三步，自定义QuartzConfig配置文件，如下
+```
+package com.jinhaoxun.acservice.quartz;
+
+
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.Scheduler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.quartz.SchedulerFactoryBean;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description Quartz配置
+        */
+@Slf4j
+@Configuration
+public class QuartzConfig {
+
+    private JobFactory jobFactory;
+
+    /**
+     * @author jinhaoxun
+     * @description 构造器
+     * @param jobFactory
+     */
+    public QuartzConfig(JobFactory jobFactory){
+        this.jobFactory = jobFactory;
+    }
+
+    /**
+     * @author  jinhaoxun
+     * @description 配置SchedulerFactoryBean，将一个方法产生为Bean并交给Spring容器管理
+     * @return SchedulerFactoryBean
+     */
+    @Bean
+    public SchedulerFactoryBean schedulerFactoryBean() {
+        log.info("开始注入定时任务调度器工厂...");
+        SchedulerFactoryBean factory = new SchedulerFactoryBean();// Spring提供SchedulerFactoryBean为Scheduler提供配置信息,并被Spring容器管理其生命周期
+        factory.setJobFactory(jobFactory);// 设置自定义Job Factory，用于Spring管理Job bean
+        log.info("注入定时任务调度器工厂成功！");
+        return factory;
+    }
+
+    @Bean(name = "scheduler")
+    public Scheduler scheduler() {
+        return schedulerFactoryBean().getScheduler();
+    }
+}
+```
+#### 第四步，自定义QuartzManager类，用于在QuartzService中调用操作定时任务，如下
+```
+package com.jinhaoxun.acservice.quartz;
+
+import com.jinhaoxun.accommon.exception.ExceptionFactory;
+import com.jinhaoxun.accommon.pojo.quartz.AddCronJobReq;
+import com.jinhaoxun.accommon.pojo.quartz.AddSimpleJobReq;
+import com.jinhaoxun.accommon.response.ResponseMsg;
+import com.jinhaoxun.accommon.util.dataUtil.TimeUtil;
+import org.quartz.*;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.Date;
+
+import static org.quartz.DateBuilder.futureDate;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description Quartz管理操作类
+ */
+@Service
+public class QuartzManager {
+
+    private Scheduler scheduler;
+
+    @Resource
+    private ExceptionFactory exceptionFactory;
+
+    /**
+     * @author jinhaoxun
+     * @description 构造器
+     * @param scheduler 调度器
+     */
+    public QuartzManager(Scheduler scheduler){
+        this.scheduler = scheduler;
+    }
+
+    private static String jobUrl = "com.jinhaoxun.acservice.quartz.Job.";//quartz任务类包路径
+
+    /**
+     * @author jinhaoxun
+     * @description 添加一个Simple定时任务
+     * @param addSimpleJobReq 参数对象
+     * @throws RuntimeException
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void addSimpleJob(AddSimpleJobReq addSimpleJobReq) throws Exception{
+        jobUrl += addSimpleJobReq.getJobClass();
+        try {
+            Class<? extends Job> aClass = (Class<? extends Job>) Class.forName(jobUrl).newInstance().getClass();
+            JobDetail job = JobBuilder.newJob(aClass).withIdentity(addSimpleJobReq.getJobName(),
+                    addSimpleJobReq.getJobGroupName()).build();// 任务名，任务组，任务执行类
+            job.getJobDataMap().putAll(addSimpleJobReq.getParams());// 添加任务参数
+
+            long workDate = addSimpleJobReq.getDate().getTime();
+            int time = (int)((workDate -  new Date().getTime()) / 1000);// 转换为时间差，秒单位
+
+            SimpleTrigger trigger = (SimpleTrigger) TriggerBuilder.newTrigger()
+                    .withIdentity(addSimpleJobReq.getTriggerName(), addSimpleJobReq.getTriggerGroupName())
+                    .startAt(futureDate(time, DateBuilder.IntervalUnit.SECOND))
+                    .build();
+            scheduler.scheduleJob(job, trigger);// 调度容器设置JobDetail和Trigger
+            if (!scheduler.isShutdown()) {
+                scheduler.start();// 启动
+            }
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_ADD_JOB_FAIL.getCode(),e.getMessage());
+        }
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 添加一个Cron定时任务
+     * @param addCronJobReq 参数对象
+     * @throws Exception
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void addCronJob(AddCronJobReq addCronJobReq) throws Exception{
+        try {
+            Class<? extends Job> aClass = (Class<? extends Job>) Class.forName("com.jinhaoxun.acservice.quartz.Job.JobTest").newInstance().getClass();
+            JobDetail job = JobBuilder.newJob(aClass).withIdentity(addCronJobReq.getJobName(),
+                    addCronJobReq.getJobGroupName()).build();// 任务名，任务组，任务执行类
+            job.getJobDataMap().putAll(addCronJobReq.getParams());// 添加任务参数
+
+            CronTrigger trigger = (CronTrigger) TriggerBuilder.newTrigger()// 创建触发器
+                    .withIdentity(addCronJobReq.getTriggerName(), addCronJobReq.getTriggerGroupName())// 触发器名,触发器组
+                    .withSchedule(CronScheduleBuilder.cronSchedule(addCronJobReq.getDate()))// 触发器时间设定
+                    .build();
+            scheduler.scheduleJob(job, trigger);// 调度容器设置JobDetail和Trigger
+
+            if (!scheduler.isShutdown()) {
+                scheduler.start();// 启动
+            }
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_ADD_JOB_FAIL.getCode(),e.getMessage());
+        }
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 修改一个任务的触发时间
+     * @param triggerName       触发器名
+     * @param triggerGroupName  触发器组名
+     * @param cron              时间设置，参考quartz说明文档
+     * @throws Exception
+     */
+    public void modifyJobTime(String triggerName, String triggerGroupName, String cron) throws Exception{
+        try {
+            TriggerKey triggerKey = TriggerKey.triggerKey(triggerName, triggerGroupName);
+            CronTrigger trigger = (CronTrigger) scheduler.getTrigger(triggerKey);
+            if (trigger == null) {
+                return;
+            }
+            String oldTime = trigger.getCronExpression();
+            if (!oldTime.equalsIgnoreCase(cron)) {
+                TriggerBuilder<Trigger> triggerBuilder = TriggerBuilder.newTrigger();// 触发器
+                triggerBuilder.withIdentity(triggerName, triggerGroupName); // 触发器名,触发器组
+                triggerBuilder.startNow();
+                triggerBuilder.withSchedule(CronScheduleBuilder.cronSchedule(cron));// 触发器时间设定
+                trigger = (CronTrigger) triggerBuilder.build();// 创建Trigger对象
+                scheduler.rescheduleJob(triggerKey, trigger); // 方式一 ：修改一个任务的触发时间
+            }
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_UPDATE_JOB_FAIL.getCode(),e.getMessage());
+        }
+    }
+    /**
+     * @author jinhaoxun
+     * @description 移除一个任务
+     * @param jobName           任务名
+     * @param jobGroupName      任务组名
+     * @param triggerName       触发器名
+     * @param triggerGroupName  触发器组名
+     * @throws Exception
+     */
+    public void removeJob(String jobName, String jobGroupName, String triggerName, String triggerGroupName) throws Exception{
+        try {
+            TriggerKey triggerKey = TriggerKey.triggerKey(triggerName, triggerGroupName);
+            scheduler.pauseTrigger(triggerKey);// 停止触发器
+            scheduler.unscheduleJob(triggerKey);// 移除触发器
+            scheduler.deleteJob(JobKey.jobKey(jobName, jobGroupName));// 删除任务
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_DELETE_JOB_FAIL.getCode(),e.getMessage());
+        }
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 获取任务是否存在
+     * @param triggerName       触发器名
+     * @param triggerGroupName  触发器组名
+     * @return Boolean 返回操作结果
+     * 获取任务是否存在
+     * STATE_BLOCKED 4 阻塞
+     * STATE_COMPLETE 2 完成
+     * STATE_ERROR 3 错误
+     * STATE_NONE -1 不存在
+     * STATE_NORMAL 0 正常
+     * STATE_PAUSED 1 暂停
+     * @throws Exception
+     */
+    public  Boolean notExists(String triggerName, String triggerGroupName) throws Exception{
+        try {
+            return scheduler.getTriggerState(TriggerKey.triggerKey(triggerName, triggerGroupName)) == Trigger.TriggerState.NONE;
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_EXISTS_JOB_FAIL.getCode(),e.getMessage());
+        }
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 关闭调度器
+     * @throws RuntimeException
+     */
+    public void shutdown() throws Exception{
+        try {
+            if(scheduler.isStarted()){
+                scheduler.shutdown(true);
+            }
+        } catch (Exception e) {
+            throw exceptionFactory.build(ResponseMsg.QUARTZ_SHUTDOWN_SCHEDULER_FAIL.getCode(),e.getMessage());
+        }
+    }
+
+}
+```
+#### 第五步，自定义新增任务请求实体类AddSimpleJobReq，AddCronJobReq，DeleteJobReq，如下
+```
+package com.jinhaoxun.accommon.pojo.quartz;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description 新增Simple定时任务请求实体类
+ */
+@Data
+public class AddSimpleJobReq implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String jobName;
+
+    private String jobGroupName;
+
+    private String triggerName;
+
+    private String triggerGroupName;
+
+    private String jobClass;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
+    @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss")
+    private Date date;
+
+    private Map<String, String> params = new HashMap<>();
+
+}
+```
+```
+package com.jinhaoxun.accommon.pojo.quartz;
+
+import lombok.Data;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description 新增Cron定时任务请求实体类
+ */
+@Data
+public class AddCronJobReq implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String jobName;
+
+    private String jobGroupName;
+
+    private String triggerName;
+
+    private String triggerGroupName;
+
+    private String jobClass;
+
+    private String date;
+
+    private Map<String, String> params = new HashMap<>();
+
+}
+```
+```
+package com.jinhaoxun.accommon.pojo.quartz;
+
+import lombok.Data;
+
+import java.io.Serializable;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description 删除定时任务请求实体类
+ */
+@Data
+public class DeleteJobReq implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String jobName;
+
+    private String jobGroupName;
+
+    private String triggerName;
+
+    private String triggerGroupName;
+
+}
+```
+#### 第六步，自定义执行任务JobTest类，如下
+```
+package com.jinhaoxun.acservice.quartz.Job;
+
+import com.jinhaoxun.acservice.service.shiroService.IUserService;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.Job;
+import org.quartz.JobDataMap;
+import org.quartz.JobExecutionContext;
+import org.springframework.beans.factory.annotation.Autowired;
+
+/**
+ * @version: 1.0
+ * @author jinhaoxun
+ * @Date 2018-05-09
+ * @description Job测试类
+ */
+@Slf4j
+public class JobTest implements Job {
+
+    @Autowired
+    private IUserService iUserService;
+
+    /**
+     * @author jinhaoxun
+     * @description 重写任务内容
+     * @param jobExecutionContext
+     * @throws RuntimeException
+     */
+    @Override
+    public void execute(JobExecutionContext jobExecutionContext) {
+        JobDataMap dataMap = jobExecutionContext.getMergedJobDataMap();//获取参数
+        String id = dataMap.getString("id");
+        String name = dataMap.getString("name");
+        try {
+            iUserService.getUser(id);
+            log.info("执行任务{},{}",id,name);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+
+```
+#### 第七步，自定义QuartzService类，用于测试效果，如下
+```
+package com.jinhaoxun.acservice.service.quartzService;
+
+import com.jinhaoxun.accommon.pojo.quartz.AddCronJobReq;
+import com.jinhaoxun.accommon.pojo.quartz.AddSimpleJobReq;
+import com.jinhaoxun.accommon.pojo.quartz.DeleteJobReq;
+import com.jinhaoxun.accommon.response.ResponseFactory;
+import com.jinhaoxun.accommon.response.ResponseResult;
+import com.jinhaoxun.acservice.quartz.QuartzManager;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description Quartz服务类
+ */
+@Slf4j
+@Service
+public class QuartzService {
+
+    @Autowired
+    private QuartzManager quartzManager;
+
+    /**
+     * @author jinhaoxun
+     * @description 新增Simple任务
+     * @param addSimpleJobReq 任务参数
+     * @return ResponseResult 是否新增成功
+     * @throws RuntimeException
+     */
+    public ResponseResult<Boolean> addSimpleJob(AddSimpleJobReq addSimpleJobReq) throws Exception{
+/*        SimpleTrigger cronTrigger = timingTasks.setTrigger(date);
+        JobDetail jobDetail = timingTasks.setJobDetail(id,op);
+        timingTasks.startScheduler(jobDetail,cronTrigger);*/
+        quartzManager.addSimpleJob(addSimpleJobReq);
+        return ResponseFactory.buildSuccessResponse("新增任务成功！");
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 新增Cron任务
+     * @param addCronJobReq 任务参数
+     * @return ResponseResult 是否新增成功
+     * @throws RuntimeException
+     */
+    public ResponseResult<Boolean> addCronJob(AddCronJobReq addCronJobReq) throws Exception{
+        quartzManager.addCronJob(addCronJobReq);
+        return ResponseFactory.buildSuccessResponse("新增任务成功！");
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 删除任务
+     * @param deleteJobReq 删除任务参数
+     * @return ResponseResult 是否删除成功
+     * @throws RuntimeException
+     */
+    public ResponseResult<Boolean> deleteJob(DeleteJobReq deleteJobReq) throws Exception{
+        quartzManager.removeJob(deleteJobReq.getJobName(),deleteJobReq.getJobGroupName(),deleteJobReq.getTriggerName(),deleteJobReq.getTriggerGroupName());
+        return ResponseFactory.buildSuccessResponse("删除任务成功！");
+    }
+
+    /**
+     * @author jinhaoxun
+     * @description 关闭调度器
+     * @return ResponseResult 是否关闭成功
+     * @throws RuntimeException
+     */
+    public ResponseResult<Boolean> deleteScheduler() throws Exception{
+        quartzManager.shutdown();
+        return ResponseFactory.buildSuccessResponse("关闭调度器成功！");
+    }
+}
+```
+#### 第八步，自定义QuartzController类，用于测试效果，如下
+```
+package com.jinhaoxun.acweb.controller.quartzController;
+
+import com.jinhaoxun.accommon.pojo.quartz.AddCronJobReq;
+import com.jinhaoxun.accommon.pojo.quartz.AddSimpleJobReq;
+import com.jinhaoxun.accommon.pojo.quartz.DeleteJobReq;
+import com.jinhaoxun.accommon.response.ResponseResult;
+import com.jinhaoxun.acservice.service.quartzService.QuartzService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * @version 1.0
+ * @author jinhaoxun
+ * @date 2018-05-09
+ * @description Quartz前端控制器
+ */
+@RequestMapping("/quartz")
+@RestController
+@Api("Quartz接口")
+public class QuartzController {
+
+    @Autowired
+    private QuartzService quartzServer;
+
+    /**
+     * 新增Simple任务
+     * @return ResponseResult
+     */
+    @PostMapping(value = "/simplejob", produces = "application/json; charset=UTF-8")
+    @ApiOperation("新增Simple任务")
+    public ResponseResult<Boolean> addSimpleJob(@RequestBody AddSimpleJobReq addSimpleJobReq) throws Exception {
+        return quartzServer.addSimpleJob(addSimpleJobReq);
+    }
+
+    /**
+     * 新增Cron任务
+     * @return ResponseResult
+     */
+    @PostMapping(value = "/cronjob", produces = "application/json; charset=UTF-8")
+    @ApiOperation("新增Cron任务")
+    public ResponseResult<Boolean> addCronJob(@RequestBody AddCronJobReq addCronJobReq) throws Exception {
+        return quartzServer.addCronJob(addCronJobReq);
+    }
+
+    /**
+     * 删除任务
+     * @return ResponseResult
+     */
+    @DeleteMapping(value = "/job", produces = "application/json; charset=UTF-8")
+    @ApiOperation("删除任务")
+    public ResponseResult<Boolean> deleteJob(DeleteJobReq deleteJobReq) throws Exception {
+        return quartzServer.deleteJob(deleteJobReq);
+    }
+
+    /**
+     * 关闭调度器
+     * @return ResponseResult
+     */
+    @DeleteMapping(value = "/scheduler", produces = "application/json; charset=UTF-8")
+    @ApiOperation("关闭调度器")
+    public ResponseResult<Boolean> deleteScheduler() throws Exception {
+        return quartzServer.deleteScheduler();
+    }
+}
+```
+#### 第九步，启动项目，测试一下，如下图
+##### 请求参数
+![1.jpg](https://upload-images.jianshu.io/upload_images/16847375-4157d20df82d0fb3.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+##### 响应结果
+![2.jpg](https://upload-images.jianshu.io/upload_images/16847375-2ad58ec3cc8c053e.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+##### 后台执行打印
+![3.jpg](https://upload-images.jianshu.io/upload_images/16847375-21f3f37708462ad9.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+后记：本次的“springboot整合quartz，配置动态增删改查定时任务，并解决job中不能注入bean问题”教程到此结束，有任何意见或建议请留言，谢谢~~~
+

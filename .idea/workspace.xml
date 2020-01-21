@@ -2,20 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f4543243-94b4-48e5-923e-70b7e02079b9" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_config.yml" beforeDir="false" afterPath="$PROJECT_DIR$/_config.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_drafts/请输入文件名adf.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/springboot整合quartz，配置动态增删改查定时任务，并解决job中不能注入bean问题.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/springboot整合swagger2，配置swagger2支持传参token进行验证.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/springboot项目开启热部署（修改代码无需重启项目）.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/springboot项目整合swagger2，并实现扫描多个不同包的接口.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/springboot项目配置logback打印日志，并自定义日志级别打印mybatis的sql语句.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/自定义枚举工具类，根据枚举类code获取msg.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/解决IDEA中git出现：Could not read from remote repository 的问题.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/_posts/解释RocketMQ4.3.x集群部署中，各个配置文件中各个属性参数各代表什么.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/about/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/source/about/index.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -7,7 +7,7 @@ date: 2020-01-18 18:19:38
 <center>本站所有内容均是本人学习或工作过程中get到的一些小技巧，记录在此方便自己查看，同时也希望能够帮到正在阅读的你！</center>
 <center>有任何意见或建议，请给我留言或发邮件。</center>
 
-![g04.jpg](../images/g04.jpg)
+![g04.jpg](../images/other/g04.jpg)
 
 <p><center>邮箱：luoyusoft@126.com</center>
 <center>GitHub：<a href="https://github.com/luoyusoft">https://github.com/luoyusoft</a></center>

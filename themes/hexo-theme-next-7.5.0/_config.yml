@@ -205,12 +205,13 @@ social_icons:
 # Blog rolls
 links_settings:
   icon: link
-  title: Links
+  title: 不错的博客
   # Available values: block | inline
-  layout: block
+  layout: inline
 
 links:
-  自己: https://luoyublog.com
+  王继红: https://segmentfault.com/u/wangjihong
+  胡渣渣: https://segmentfault.com/u/huzhazha
 
 # Table of Contents in the Sidebar
 toc:
@@ -874,7 +875,7 @@ pace:
   # Themes list:
   # big-counter | bounce | barber-shop | center-atom | center-circle | center-radar | center-simple
   # corner-indicator | fill-left | flat-top | flash | loading-bar | mac-osx | material | minimal
-  theme: minimal
+  theme: material
 
 # JavaScript 3D library.
 # Dependencies: https://github.com/theme-next/theme-next-three

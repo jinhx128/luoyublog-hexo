@@ -4,6 +4,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/.deploy_git" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/themes/hexo-theme-next-7.5.0/source/lib/canvas-nest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/themes/hexo-theme-next-7.5.0/source/lib/pace" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/themes/hexo-theme-next-7.5.0/source/lib/three" vcs="Git" />
   </component>
 </project>

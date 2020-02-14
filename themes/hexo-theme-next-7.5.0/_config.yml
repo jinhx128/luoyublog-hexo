@@ -53,7 +53,7 @@ rss: /atom.xml
 
 footer:
   # Specify the date when the site was setup. If not defined, current year will be used.
-  since: 2018
+  since: 2019
 
   # Icon between year and copyright info.
   icon:
@@ -205,7 +205,7 @@ social_icons:
 # Blog rolls
 links_settings:
   icon: link
-  title: 不错的博客
+  title: 友链
   # Available values: block | inline
   layout: inline
 

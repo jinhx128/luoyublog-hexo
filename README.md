@@ -6,4 +6,4 @@
 |:---:|:---|
 
 ## 关于作者
-【<b>个人博客</b>】    【<b><a href="https://jinhx.cc/"> https://jinhx.cc/ </a></b>】<br/>
+【<b>个人博客</b>】    【<b><a href="https://jinhx.cc"> https://jinhx.cc </a></b>】<br/>
